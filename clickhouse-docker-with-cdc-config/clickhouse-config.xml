@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<clickhouse>
+    <!-- Network Configuration -->
+    <listen_host>0.0.0.0</listen_host>
+    <http_port>8123</http_port>
+    <tcp_port>9000</tcp_port>
+
+    <!-- Zookeeper Configuration -->
+    <zookeeper>
+        <node>
+            <host>keeper-1</host>
+            <port>9181</port>
+        </node>
+        <node>
+            <host>keeper-2</host>
+            <port>9181</port>
+        </node>
+        <node>
+            <host>keeper-3</host>
+            <port>9181</port>
+        </node>
+    </zookeeper>
+
+    <!-- Distributed DDL -->
+    <distributed_ddl>
+        <path>/clickhouse/task_queue/ddl</path>
+    </distributed_ddl>
+
+    <!-- Merge Tree settings -->
+    <merge_tree>
+        <max_suspicious_broken_parts>5</max_suspicious_broken_parts>
+    </merge_tree>
+
+    <!-- Logs -->
+    <logger>
+        <level>error</level>
+        <log>/var/log/clickhouse-server/clickhouse-server.log</log>
+        <errorlog>/var/log/clickhouse-server/clickhouse-server.err.log</errorlog>
+        <size>1000M</size>
+        <count>10</count>
+    </logger>
+    
+    <kafka>
+        <auto_offset_reset>smallest</auto_offset_reset>
+    </kafka>
+
+</clickhouse>
