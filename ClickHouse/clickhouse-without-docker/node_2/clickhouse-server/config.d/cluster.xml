@@ -1,0 +1,17 @@
+<clickhouse>
+    <remote_servers>
+        <cluster_1S_2R>
+            <shard>
+                <internal_replication>true</internal_replication>
+                <replica>
+                    <host>192.168.42.130</host>
+                    <port>9001</port>
+                </replica>
+                <replica>
+                    <host>192.168.42.129</host>
+                    <port>9001</port>
+                </replica>
+            </shard>
+        </cluster_1S_2R>
+    </remote_servers>
+</clickhouse>

@@ -1,0 +1,241 @@
+version: '3.8'
+
+services:
+  # ======================
+  # ClickHouse Keeper 
+  # ======================
+  keeper-1:
+    image: clickhouse/clickhouse-server:25.8
+    container_name: keeper-1
+    hostname: keeper-1
+    command: clickhouse-keeper --config=/etc/clickhouse-server/config.d/keeper-config.xml
+    ports:
+      - "9181:9181"
+      - "9234:9234"
+    volumes:
+      - ./keeper-config-1.xml:/etc/clickhouse-server/config.d/keeper-config.xml:ro
+      - k1-data:/var/lib/clickhouse/coordination
+    networks:
+      - clickhouse-network
+      - kafka-network
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/9234'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  keeper-2:
+    image: clickhouse/clickhouse-server:25.8
+    container_name: keeper-2
+    hostname: keeper-2
+    command: clickhouse-keeper --config=/etc/clickhouse-server/config.d/keeper-config.xml
+    ports:
+      - "9182:9181"
+      - "9235:9234"
+    volumes:
+      - ./keeper-config-2.xml:/etc/clickhouse-server/config.d/keeper-config.xml:ro
+      - k2-data:/var/lib/clickhouse/coordination
+    networks:
+      - clickhouse-network
+      - kafka-network
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/9234'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  keeper-3:
+    image: clickhouse/clickhouse-server:25.8
+    container_name: keeper-3
+    hostname: keeper-3
+    command: clickhouse-keeper --config=/etc/clickhouse-server/config.d/keeper-config.xml
+    ports:
+      - "9183:9181"
+      - "9236:9234"
+    volumes:
+      - ./keeper-config-3.xml:/etc/clickhouse-server/config.d/keeper-config.xml:ro
+      - k3-data:/var/lib/clickhouse/coordination
+    networks:
+      - clickhouse-network
+      - kafka-network
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/9234'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ======================
+  # ClickHouse Node 1
+  # ======================
+  clickhouse-1:
+    image: clickhouse/clickhouse-server:25.8
+    container_name: clickhouse-1
+    hostname: clickhouse-1
+    depends_on:
+      - keeper-1
+      - keeper-2
+      - keeper-3
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - ./clickhouse-config.xml:/etc/clickhouse-server/config.d/clickhouse-config.xml:ro
+      - ./clickhouse-users.xml:/etc/clickhouse-server/users.d/clickhouse-users.xml:ro
+      - ./clickhouse-nodes.xml:/etc/clickhouse-server/config.d/clickhouse-nodes.xml:ro
+      - ./macros.xml:/etc/clickhouse-server/config.d/macros.xml:ro
+      - ch1-data:/var/lib/clickhouse
+      - ch1-log:/var/log/clickhouse-server
+    networks:
+      - clickhouse-network
+      - kafka-network
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: default
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client --query 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  clickhouse-2:
+    image: clickhouse/clickhouse-server:25.8
+    container_name: clickhouse-2
+    hostname: clickhouse-2
+    depends_on:
+      - keeper-1
+      - keeper-2
+      - keeper-3
+    ports:
+      - "8124:8123"
+      - "9001:9000"
+    volumes:
+      - ./clickhouse-config.xml:/etc/clickhouse-server/config.d/clickhouse-config.xml:ro
+      - ./clickhouse-users.xml:/etc/clickhouse-server/users.d/clickhouse-users.xml:ro
+      - ./clickhouse-nodes.xml:/etc/clickhouse-server/config.d/clickhouse-nodes.xml:ro
+      - ./macros-2.xml:/etc/clickhouse-server/config.d/macros-2.xml:ro
+      - ch2-data:/var/lib/clickhouse
+      - ch2-log:/var/log/clickhouse-server
+    networks:
+      - clickhouse-network
+      - kafka-network
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: default
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client --query 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  clickhouse-3:
+    image: clickhouse/clickhouse-server:25.8
+    container_name: clickhouse-3
+    hostname: clickhouse-3
+    depends_on:
+      - keeper-1
+      - keeper-2
+      - keeper-3
+    ports:
+      - "8125:8123"
+      - "9002:9000"
+    volumes:
+      - ./clickhouse-config.xml:/etc/clickhouse-server/config.d/clickhouse-config.xml:ro
+      - ./clickhouse-users.xml:/etc/clickhouse-server/users.d/clickhouse-users.xml:ro
+      - ./clickhouse-nodes.xml:/etc/clickhouse-server/config.d/clickhouse-nodes.xml:ro
+      - ./macros-3.xml:/etc/clickhouse-server/config.d/macros-3.xml:ro
+      - ch3-data:/var/lib/clickhouse
+      - ch3-log:/var/log/clickhouse-server
+    networks:
+      - clickhouse-network
+      - kafka-network
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: default
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client --query 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  # ======================
+  # HAProxy
+  # ======================
+  haproxy:
+    image: haproxy:3.0-alpine
+    container_name: clickhouse-haproxy
+    depends_on:
+      - clickhouse-1
+      - clickhouse-2
+      - clickhouse-3
+    ports:
+      - "8080:8124"
+      - "9004:9000"
+      - "8404:8404"
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    networks:
+      - clickhouse-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ======================
+  # Grafana (ClickStack)
+  # ======================
+  clickstack:
+    image: grafana/grafana:latest
+    container_name: clickhouse-clickstack
+    depends_on:
+      - haproxy
+      - clickhouse-1
+      - clickhouse-2
+      - clickhouse-3
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
+    volumes:
+      - clickstack-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - clickhouse-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:3000/api/health > /dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+
+
+volumes:
+  k1-data:
+  k2-data:
+  k3-data:
+  ch1-data:
+  ch1-log:
+  ch2-data:
+  ch2-log:
+  ch3-data:
+  ch3-log:
+  clickstack-data:
+
+networks:
+  clickhouse-network:
+    driver: bridge
+  kafka-network:
+    external: true

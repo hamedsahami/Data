@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<clickhouse>
+    <!-- ClickHouse Cluster Definition -->
+    <remote_servers>
+        <clickhouse_cluster>
+            <shard>
+                <replica>
+                    <host>clickhouse-1</host>
+                    <port>9000</port>
+                    <default_database>default</default_database>
+                </replica>
+                <replica>
+                    <host>clickhouse-2</host>
+                    <port>9000</port>
+                    <default_database>default</default_database>
+                </replica>
+                <replica>
+                    <host>clickhouse-3</host>
+                    <port>9000</port>
+                    <default_database>default</default_database>
+                </replica>
+            </shard>
+        </clickhouse_cluster>
+    </remote_servers>
+</clickhouse>
+
