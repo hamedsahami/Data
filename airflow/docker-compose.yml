@@ -1,0 +1,127 @@
+version: "3.9"
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:3.2.1-python3.12
+  restart: unless-stopped
+
+  env_file:
+    - .env
+
+  environment:
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: mysql+pymysql://airflow:airflow123@mysql:3306/airflow
+
+    AIRFLOW__CELERY__RESULT_BACKEND: db+mysql://airflow:airflow123@mysql:3306/airflow
+
+    AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
+
+    AIRFLOW__CORE__FERNET_KEY: ""
+
+    AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+
+    AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
+
+    AIRFLOW_UID: ${AIRFLOW_UID}
+
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+    - ./config:/opt/airflow/config
+
+  depends_on:
+    mysql:
+      condition: service_healthy
+    redis:
+      condition: service_started
+
+services:
+
+  mysql:
+    image: mysql:8.4
+
+    restart: unless-stopped
+
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+
+    command:
+      --default-authentication-plugin=mysql_native_password
+
+    ports:
+      - "3306:3306"
+
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d
+
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      retries: 10
+      timeout: 10s
+
+  redis:
+    image: redis:7
+
+    restart: unless-stopped
+
+    ports:
+      - "6379:6379"
+
+    volumes:
+      - redis-data:/data
+
+  airflow-init:
+
+    <<: *airflow-common
+
+    entrypoint: /bin/bash
+
+    command: |
+      -c "
+      airflow db migrate &&
+      airflow users create \
+        --username ${AIRFLOW_USER} \
+        --password ${AIRFLOW_PASSWORD} \
+        --firstname Admin \
+        --lastname User \
+        --role Admin \
+        --email ${AIRFLOW_EMAIL}
+      "
+
+  airflow-webserver:
+
+    <<: *airflow-common
+
+    command: api-server
+
+    ports:
+      - "8080:8080"
+
+  airflow-scheduler:
+
+    <<: *airflow-common
+
+    command: scheduler
+
+  airflow-worker:
+
+    <<: *airflow-common
+
+    command: celery worker
+
+  airflow-triggerer:
+
+    <<: *airflow-common
+
+    command: triggerer
+
+volumes:
+
+  mysql-data:
+  redis-data:
