@@ -24,6 +24,8 @@ x-airflow-common: &airflow-common
 
     AIRFLOW_UID: ${AIRFLOW_UID}
 
+    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
